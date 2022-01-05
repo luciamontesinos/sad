@@ -34,6 +34,8 @@ dependencies:
   pedometer: ^3.0.0
   activity_recognition_flutter: ^4.1.0
   permission_handler: ^8.3.0
+  http: ^0.13.4
+  json_serializable: ^6.0.1
 
 
   # The following adds the Cupertino Icons font to your application.

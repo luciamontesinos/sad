@@ -7,6 +7,12 @@ import 'dart:async';
 import 'dart:io';
 import 'package:activity_recognition_flutter/activity_recognition_flutter.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
+import 'location_data.dart';
+import 'steps_data.dart';
+import 'activity_data.dart';
 
 void main() {
   runApp(SensingApp());
@@ -18,12 +24,6 @@ class SensingApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    /// Returns a [List] with [IconData] to show in the [AppHome] [AppBar].
-    final List<IconData> icons = [
-      Icons.location_on,
-      Icons.info_outline,
-    ];
-
     return MaterialApp(
       title: 'Sensing app',
       home: AppHome(title: 'Sensing app'),
@@ -33,11 +33,7 @@ class SensingApp extends StatelessWidget {
 
 /// A Flutter example demonstrating how the [pluginName] plugin could be used
 class AppHome extends StatefulWidget {
-  /// Constructs the [AppHome] class
   AppHome({required this.title});
-
-  /// The [title] of the application, which is shown in the application's
-  /// title bar.
   final String title;
 
   @override
@@ -52,8 +48,10 @@ class _AppHomeState extends State<AppHome> {
   List<Placemark>? placemarks;
   loc.LocationData? _locationData;
   StreamSubscription<ActivityEvent>? activityStreamSubscription;
-  List<ActivityEvent> _events = [];
+  final List<ActivityEvent> _events = [];
   ActivityRecognition activityRecognition = ActivityRecognition.instance;
+
+  String url = 'https://odd-turtle-43.loca.lt/';
 
   @override
   void initState() {
@@ -61,7 +59,8 @@ class _AppHomeState extends State<AppHome> {
     getLocation();
     initPlatformState();
     _init();
-    _events.add(ActivityEvent.empty());
+    getActivity();
+
     super.initState();
   }
 
@@ -109,8 +108,51 @@ class _AppHomeState extends State<AppHome> {
     _locationData = await location.getLocation();
     placemarks = await placemarkFromCoordinates(_locationData!.latitude!, _locationData!.longitude!);
     setState(() {});
+    LocationData locationData = LocationData(
+        dateTime: DateTime.now(),
+        latitude: _locationData!.latitude!,
+        longitude: _locationData!.longitude!,
+        name: placemarks!.last.name!,
+        address: placemarks!.last.street!);
+    print(sendLocation(locationData));
 
     //print(_locationData.latitude);
+  }
+
+  void getActivity() {
+    _events.add(ActivityEvent.empty());
+    ActivityData activityData = ActivityData(
+        dateTime: DateTime.now(),
+        certainty: _events.last.confidence,
+        activity: _events.last.type.toString().split('.').last);
+    print(sendActivity(activityData));
+  }
+
+  Future<http.Response> sendLocation(LocationData locationData) async {
+    var response = await http.post(Uri.parse(url + 'location'),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: jsonEncode(locationData.toJson()));
+    return response;
+  }
+
+  Future<http.Response> sendSteps(StepsData stepsData) async {
+    var response = await http.post(Uri.parse(url + 'steps'),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: jsonEncode(stepsData.toJson()));
+    return response;
+  }
+
+  Future<http.Response> sendActivity(ActivityData activityData) async {
+    var response = await http.post(Uri.parse(url + 'activity'),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: jsonEncode(activityData.toJson()));
+    return response;
   }
 
   void onStepCount(StepCount event) {
@@ -118,6 +160,9 @@ class _AppHomeState extends State<AppHome> {
     setState(() {
       _steps = event.steps.toString();
     });
+
+    StepsData stepsData = StepsData(dateTime: DateTime.now(), steps: num.parse(_steps));
+    print(sendSteps(stepsData));
   }
 
   void onPedestrianStatusChanged(PedestrianStatus event) {
@@ -168,7 +213,7 @@ class _AppHomeState extends State<AppHome> {
         Text("The place is: " + placemarks!.last.toString()),
         Text("Steps taken: " + _steps),
         Text(
-            "Current activity :  ${_events.last.type.toString().split('.').last} (${_events.last.confidence}"),
+            "Current activity :  ${_events.last.type.toString().split('.').last} ${_events.last.confidence}"),
       ])),
     );
   }
