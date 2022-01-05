@@ -29,6 +29,11 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  geocoding: ^2.0.1
+  location: ^4.2.0
+  pedometer: ^3.0.0
+  activity_recognition_flutter: ^4.1.0
+  permission_handler: ^8.3.0
 
 
   # The following adds the Cupertino Icons font to your application.
