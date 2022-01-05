@@ -18,10 +18,7 @@ void main() {
   runApp(SensingApp());
 }
 
-/// A Flutter application demonstrating the functionality of this plugin
 class SensingApp extends StatelessWidget {
-  /// [MaterialColor] to be used in the app [ThemeData]
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -31,7 +28,6 @@ class SensingApp extends StatelessWidget {
   }
 }
 
-/// A Flutter example demonstrating how the [pluginName] plugin could be used
 class AppHome extends StatefulWidget {
   AppHome({required this.title});
   final String title;
@@ -51,42 +47,31 @@ class _AppHomeState extends State<AppHome> {
   final List<ActivityEvent> _events = [];
   ActivityRecognition activityRecognition = ActivityRecognition.instance;
 
-  String url = 'https://odd-turtle-43.loca.lt/';
+  String url = 'https://silly-stingray-56.loca.lt/';
 
   @override
   void initState() {
+    // CHECK PERMISSION & GET STEPS
     checkPermissions();
+
+    // GET LOCATION
     getLocation();
-    initPlatformState();
-    _init();
+
+    // GET ACTIVITY
     getActivity();
 
     super.initState();
   }
 
-  void _init() async {
-    // Android requires explicitly asking permission
-    if (Platform.isAndroid) {
-      if (await Permission.activityRecognition.request().isGranted) {
-        _startTracking();
-      }
-    }
-
-    // iOS does not
-    else {
-      _startTracking();
-    }
-  }
-
   void _startTracking() {
     activityStreamSubscription =
-        activityRecognition.activityStream(runForegroundService: true).listen(onData);
+        activityRecognition.activityStream(runForegroundService: true).listen(onActivityData);
   }
 
   void checkPermissions() async {
+    /// LOCATION
     bool _serviceEnabled;
     loc.PermissionStatus _permissionGranted;
-
     _serviceEnabled = await location.serviceEnabled();
     if (!_serviceEnabled) {
       _serviceEnabled = await location.requestService();
@@ -94,7 +79,6 @@ class _AppHomeState extends State<AppHome> {
         return;
       }
     }
-
     _permissionGranted = await location.hasPermission();
     if (_permissionGranted == loc.PermissionStatus.denied) {
       _permissionGranted = await location.requestPermission();
@@ -102,6 +86,21 @@ class _AppHomeState extends State<AppHome> {
         return;
       }
     }
+
+    /// ACTIVITY
+    if (Platform.isAndroid) {
+      if (await Permission.activityRecognition.request().isGranted) {
+        _startTracking();
+      }
+    } else {
+      _startTracking();
+    }
+
+    /// STEPS
+    _pedestrianStatusStream = Pedometer.pedestrianStatusStream;
+    _stepCountStream = Pedometer.stepCountStream;
+    _stepCountStream.listen(getSteps);
+    //_pedestrianStatusStream.listen(onPedestrianStatusChanged);
   }
 
   void getLocation() async {
@@ -120,12 +119,18 @@ class _AppHomeState extends State<AppHome> {
   }
 
   void getActivity() {
-    _events.add(ActivityEvent.empty());
-    ActivityData activityData = ActivityData(
-        dateTime: DateTime.now(),
-        certainty: _events.last.confidence,
-        activity: _events.last.type.toString().split('.').last);
-    print(sendActivity(activityData));
+    activityStreamSubscription =
+        activityRecognition.activityStream(runForegroundService: true).listen(onActivityData);
+  }
+
+  void getSteps(StepCount event) {
+    /// Handle step count changed
+    setState(() {
+      _steps = event.steps.toString();
+    });
+
+    StepsData stepsData = StepsData(dateTime: DateTime.now(), steps: num.parse(_steps));
+    print(sendSteps(stepsData));
   }
 
   Future<http.Response> sendLocation(LocationData locationData) async {
@@ -155,53 +160,16 @@ class _AppHomeState extends State<AppHome> {
     return response;
   }
 
-  void onStepCount(StepCount event) {
-    print("@@@ $event");
-    setState(() {
-      _steps = event.steps.toString();
-    });
-
-    StepsData stepsData = StepsData(dateTime: DateTime.now(), steps: num.parse(_steps));
-    print(sendSteps(stepsData));
-  }
-
-  void onPedestrianStatusChanged(PedestrianStatus event) {
-    print(event);
-    setState(() {
-      _status = event.status;
-    });
-  }
-
-  void onPedestrianStatusError(error) {
-    print('onPedestrianStatusError: $error');
-    setState(() {
-      _status = 'Pedestrian Status not available';
-    });
-    print(_status);
-  }
-
-  void onStepCountError(error) {
-    print('onStepCountError: $error');
-    setState(() {
-      _steps = 'Step Count not available';
-    });
-  }
-
-  void onData(ActivityEvent activityEvent) {
+  void onActivityData(ActivityEvent activityEvent) {
     print('ACTIVITY - $activityEvent');
     setState(() {
       _events.add(activityEvent);
     });
-  }
-
-  void initPlatformState() {
-    _pedestrianStatusStream = Pedometer.pedestrianStatusStream;
-    _pedestrianStatusStream.listen(onPedestrianStatusChanged).onError(onPedestrianStatusError);
-
-    _stepCountStream = Pedometer.stepCountStream;
-    _stepCountStream.listen(onStepCount).onError(onStepCountError);
-
-    if (!mounted) return;
+    ActivityData activityData = ActivityData(
+        dateTime: DateTime.now(),
+        certainty: _events.last.confidence,
+        activity: _events.last.type.toString().split('.').last);
+    print(sendActivity(activityData));
   }
 
   @override
