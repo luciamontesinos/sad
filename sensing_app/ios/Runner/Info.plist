@@ -41,5 +41,17 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	<key>NSLocationUsageDescription</key>
+<string>We use location</string>
+<key>NSLocationWhenInUseUsageDescription</key>
+<string>We use location</string>
+<key>NSMotionUsageDescription</key>
+<string>This application tracks your steps</string>
+<key>UIBackgroundModes</key>
+<array>
+    <string>processing</string>
+</array>
+<key>NSMotionUsageDescription</key>
+<string>Detects human activity</string>
 </dict>
 </plist>
