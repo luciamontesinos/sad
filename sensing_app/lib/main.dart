@@ -134,14 +134,26 @@ class _AppHomeState extends State<AppHome> {
     print(sendSteps(stepsData));
   }
 
+  /// WEATHER
   void getWeather() {
     
-    fetchWeather();
+    WeatherData weatherData = fetchWeather();
 
   }
 
-  Future<http.Response> fetchWeather() {
-    return http.get(Uri.parse('https://api.openweathermap.org/data/2.5/onecall?lat=_locationData!.latitude!&lon=_locationData!.latitude!&exclude=minutely,alerts&appid=weatherAPIkey'));
+  Future<WeatherData> fetchWeather() async {
+    final response = await http
+      .get(Uri.parse('https://api.openweathermap.org/data/2.5/onecall?lat=_locationData!.latitude!&lon=_locationData!.latitude!&exclude=current,minutely,daily,alerts&appid=weatherAPIkey'));
+
+    if (response.statusCode == 200) {
+      // If the server did return a 200 OK response,
+      // then parse the JSON.   
+      return WeatherData.fromJson(jsonDecode(response.body));
+    } else {
+      // If the server did not return a 200 OK response,
+      // then throw an exception.
+      throw Exception('Failed to load weather data');
+    }    
   }
  
   Future<http.Response> sendLocation(LocationData locationData) async {
