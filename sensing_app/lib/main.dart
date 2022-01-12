@@ -48,6 +48,7 @@ class _AppHomeState extends State<AppHome> {
   ActivityRecognition activityRecognition = ActivityRecognition.instance;
 
   String url = 'https://silly-stingray-56.loca.lt/';
+  String weatherAPIkey = '82dd81e254d959de34cd6747c3d9b47f';
 
   @override
   void initState() {
@@ -133,6 +134,16 @@ class _AppHomeState extends State<AppHome> {
     print(sendSteps(stepsData));
   }
 
+  void getWeather() {
+    
+    fetchWeather();
+
+  }
+
+  Future<http.Response> fetchWeather() {
+    return http.get(Uri.parse('https://api.openweathermap.org/data/2.5/onecall?lat=_locationData!.latitude!&lon=_locationData!.latitude!&exclude=minutely,alerts&appid=weatherAPIkey'));
+  }
+ 
   Future<http.Response> sendLocation(LocationData locationData) async {
     var response = await http.post(Uri.parse(url + 'location'),
         headers: <String, String>{
