@@ -8,6 +8,7 @@ import 'dart:io';
 import 'package:activity_recognition_flutter/activity_recognition_flutter.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:http/http.dart' as http;
+import 'package:sensing_app/weather_data.dart';
 import 'dart:convert';
 
 import 'location_data.dart';
@@ -43,6 +44,7 @@ class _AppHomeState extends State<AppHome> {
   loc.Location location = loc.Location();
   List<Placemark>? placemarks;
   loc.LocationData? _locationData;
+  WeatherData? weatherData;
   StreamSubscription<ActivityEvent>? activityStreamSubscription;
   final List<ActivityEvent> _events = [];
   ActivityRecognition activityRecognition = ActivityRecognition.instance;
@@ -60,6 +62,8 @@ class _AppHomeState extends State<AppHome> {
 
     // GET ACTIVITY
     getActivity();
+
+    //getWeather();
 
     super.initState();
   }
@@ -107,6 +111,8 @@ class _AppHomeState extends State<AppHome> {
   void getLocation() async {
     _locationData = await location.getLocation();
     placemarks = await placemarkFromCoordinates(_locationData!.latitude!, _locationData!.longitude!);
+    // weatherData = await fetchWeather();
+    fetchWeather().then((value) => print(value.body.toString()));
     setState(() {});
     LocationData locationData = LocationData(
         dateTime: DateTime.now(),
@@ -135,27 +141,30 @@ class _AppHomeState extends State<AppHome> {
   }
 
   /// WEATHER
-  void getWeather() {
-    
-    WeatherData weatherData = fetchWeather();
-
+  getWeather() {
+    print("@@@@@ trying to get weather");
+    fetchWeather().then((value) => weatherData = WeatherData.fromJson(jsonDecode(value.body)));
+    print(sendWeather(weatherData!));
   }
 
-  Future<WeatherData> fetchWeather() async {
-    final response = await http
-      .get(Uri.parse('https://api.openweathermap.org/data/2.5/onecall?lat=_locationData!.latitude!&lon=_locationData!.latitude!&exclude=current,minutely,daily,alerts&appid=weatherAPIkey'));
-
-    if (response.statusCode == 200) {
-      // If the server did return a 200 OK response,
-      // then parse the JSON.   
-      return WeatherData.fromJson(jsonDecode(response.body));
-    } else {
-      // If the server did not return a 200 OK response,
-      // then throw an exception.
-      throw Exception('Failed to load weather data');
-    }    
+  Future<http.Response> fetchWeather() {
+    return http.get(Uri.parse('https://api.openweathermap.org/data/2.5/onecall?lat=' +
+        _locationData!.latitude.toString() +
+        '&lon=' +
+        _locationData!.longitude.toString() +
+        '&exclude=minutely,alerts&appid=' +
+        weatherAPIkey));
   }
- 
+
+  Future<http.Response> sendWeather(WeatherData weatherData) async {
+    var response = await http.post(Uri.parse(url + 'weather'),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: jsonEncode(weatherData.toJson()));
+    return response;
+  }
+
   Future<http.Response> sendLocation(LocationData locationData) async {
     var response = await http.post(Uri.parse(url + 'location'),
         headers: <String, String>{
@@ -200,11 +209,12 @@ class _AppHomeState extends State<AppHome> {
     return Scaffold(
       body: Center(
           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Text("The coordinates are :  ${_locationData!.latitude!}, ${_locationData!.longitude!}"),
-        Text("The place is: " + placemarks!.last.toString()),
-        Text("Steps taken: " + _steps),
-        Text(
-            "Current activity :  ${_events.last.type.toString().split('.').last} ${_events.last.confidence}"),
+        Text("SENSING APP")
+        // Text("The coordinates are :  ${_locationData!.latitude!}, ${_locationData!.longitude!}"),
+        // Text("The place is: " + placemarks!.last.toString()),
+        // Text("Steps taken: " + _steps),
+        // Text(
+        //     "Current activity :  ${_events.last.type.toString().split('.').last} ${_events.last.confidence}"),
       ])),
     );
   }
