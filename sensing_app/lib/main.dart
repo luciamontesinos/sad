@@ -113,6 +113,7 @@ class _AppHomeState extends State<AppHome> {
     placemarks = await placemarkFromCoordinates(_locationData!.latitude!, _locationData!.longitude!);
     // weatherData = await fetchWeather();
     fetchWeather().then((value) => print(value.body.toString()));
+    fetchHistoricalWeather().then((value) => print(value.body.toString()));
     setState(() {});
     LocationData locationData = LocationData(
         dateTime: DateTime.now(),
@@ -147,12 +148,32 @@ class _AppHomeState extends State<AppHome> {
     print(sendWeather(weatherData!));
   }
 
+    /// HISTORICAL WEATHER
+  getHistoricalWeather() {
+    print("@@@@@ trying to get historical weather");
+    fetchHistoricalWeather().then((value) => historicalWeatherData = WeatherData.fromJson(jsonDecode(value.body)));
+    print(sendWeather(historicalWeatherData!));
+  }
+
   Future<http.Response> fetchWeather() {
     return http.get(Uri.parse('https://api.openweathermap.org/data/2.5/onecall?lat=' +
         _locationData!.latitude.toString() +
         '&lon=' +
         _locationData!.longitude.toString() +
         '&exclude=minutely,alerts&appid=' +
+        weatherAPIkey));
+  }
+
+    Future<http.Response> fetchHistoricalWeather() {
+      final DateTime date_now = DateTime.now().subtract(Duration(days:1));
+      final timestamp = date_now.millisecondsSinceEpoch ~/ 1000;
+    return http.get(Uri.parse('https://api.openweathermap.org/data/2.5/onecall/timemachine?lat=' +
+        _locationData!.latitude.toString() +
+        '&lon=' +
+        _locationData!.longitude.toString() +
+        '&dt=' +
+        timestamp
+        '&appid=' +
         weatherAPIkey));
   }
 
