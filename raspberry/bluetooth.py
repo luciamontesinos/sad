@@ -1,4 +1,5 @@
 import pexpect
+import switch
 
 child = pexpect.spawn("bluetoothctl")
 child.send("scan on\n")
@@ -14,5 +15,9 @@ try:
             bdaddrs.append(bdaddr)
             if bdaddr == "b'A8:91:3D:61:E9:E4'":
                 print("The phone of lucia is nearby")
+                print("Running switch script")
+                switch.switchon(2)
+
 except KeyboardInterrupt:
     child.close()
+
