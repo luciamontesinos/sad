@@ -44,28 +44,144 @@ class _AppHomeState extends State<AppHome> {
   loc.Location location = loc.Location();
   List<Placemark>? placemarks;
   loc.LocationData? _locationData;
-  WeatherData? weatherData;
+
   StreamSubscription<ActivityEvent>? activityStreamSubscription;
   final List<ActivityEvent> _events = [];
+  final List<String> _eventTypes = [];
+  final List<ActivityData> detectedActivities = [];
+  final List<LocationData> detectedLocations = [];
+  WeatherData? weatherData;
+  WeatherData? historicalWeatherData;
+  StepsData? stepsData;
+
   ActivityRecognition activityRecognition = ActivityRecognition.instance;
 
-  String url = 'https://silly-stingray-56.loca.lt/';
+  String thekey = "";
+
+  // int freqLocation = 10;
+  // int freqWeather = 1140;
+  // int freqActivity = 5;
+  // int freqSending = 120;
+
+  int freqLocation = 1;
+  int freqWeather = 1;
+  int freqActivity = 1;
+  int freqSending = 2;
+
+  String url = 'https://sadproject.loca.lt/';
   String weatherAPIkey = '82dd81e254d959de34cd6747c3d9b47f';
+
+  Timer? timerLocation;
+  Timer? timerActivity;
+  Timer? timerSendData;
+  Timer? timerWeather;
 
   @override
   void initState() {
-    // CHECK PERMISSION & GET STEPS
     checkPermissions();
-
-    // GET LOCATION
-    getLocation();
-
-    // GET ACTIVITY
-    getActivity();
-
-    //getWeather();
-
+    timerLocation = Timer.periodic(Duration(minutes: freqLocation), (Timer t) => getLocation());
+    timerActivity = Timer.periodic(Duration(minutes: freqActivity), (Timer t) => detectActivity());
+    timerSendData = Timer.periodic(Duration(minutes: freqSending), (Timer t) => sendData());
+    timerWeather = Timer.periodic(Duration(minutes: freqWeather), (Timer t) => sendWeatherData());
     super.initState();
+  }
+
+  @override
+  void dispose() {
+    timerLocation?.cancel();
+    timerActivity?.cancel();
+    timerSendData?.cancel();
+    timerWeather?.cancel();
+    activityStreamSubscription?.cancel();
+    super.dispose();
+  }
+
+  // @override
+  // void initState() {
+  //   // CHECK PERMISSION & GET STEPS
+  //   checkPermissions();
+
+  //   // GET LOCATION
+  //   getLocation();
+
+  //   // GET ACTIVITY
+  //   getActivity();
+
+  //   //getWeather();
+
+  //   super.initState();
+  // }
+
+  void detectActivity() {
+    // the most common activity currently in events
+    var map = Map();
+
+    String detected;
+    if (_eventTypes.length == 0)
+      detected = 'unknown';
+    else {
+      _eventTypes.forEach((element) {
+        if (!map.containsKey(element)) {
+          map[element] = 1;
+        } else {
+          map[element] += 1;
+        }
+      });
+
+      var thevalue = 0;
+
+      map.forEach((k, v) {
+        if (v > thevalue) {
+          thevalue = v;
+          thekey = k;
+        }
+      });
+
+      print(thekey);
+
+      // List sortedValues = map.values.toList()..sort();
+      // print(sortedValues);
+      // print(map);
+      // int popularValue = sortedValues.last;
+      // detected = map[popularValue];
+    }
+    ActivityData activityData = ActivityData(
+      dateTime: DateTime.now(),
+      certainty: 100,
+      activity: thekey, // the most common activity currently in events
+    );
+
+    detectedActivities.add(activityData);
+    _events.clear();
+    _eventTypes.clear();
+  }
+
+  void sendData() {
+    //sleep(Duration(seconds: 5));
+    print("Sending data");
+    detectedActivities.forEach((item) {
+      print(item);
+      print(sendActivity(item));
+    });
+    detectedLocations.forEach((item) {
+      print(item);
+      print(sendLocation(item));
+    });
+
+    sendSteps(stepsData!);
+
+    detectedLocations.clear();
+    detectedActivities.clear();
+  }
+
+  void sendWeatherData() {
+    sleep(Duration(seconds: 5));
+    print("sending weather");
+    //fetchWeather();
+    getWeather();
+    sleep(Duration(seconds: 5));
+    sendWeather(weatherData!);
+    //sendWeather(yesterdayWeatherData!);
   }
 
   void _startTracking() {
@@ -112,8 +228,8 @@ class _AppHomeState extends State<AppHome> {
     _locationData = await location.getLocation();
     placemarks = await placemarkFromCoordinates(_locationData!.latitude!, _locationData!.longitude!);
     // weatherData = await fetchWeather();
-    fetchWeather().then((value) => print(value.body.toString()));
-    fetchHistoricalWeather().then((value) => print(value.body.toString()));
+    // fetchWeather().then((value) => print(value.body.toString()));
+    // fetchHistoricalWeather().then((value) => print(value.body.toString()));
     setState(() {});
     LocationData locationData = LocationData(
         dateTime: DateTime.now(),
@@ -121,7 +237,9 @@ class _AppHomeState extends State<AppHome> {
         longitude: _locationData!.longitude!,
         name: placemarks!.last.name!,
         address: placemarks!.last.street!);
-    print(sendLocation(locationData));
+
+    detectedLocations.add(locationData);
+    print(detectedLocations);
 
     //print(_locationData.latitude);
   }
@@ -137,21 +255,22 @@ class _AppHomeState extends State<AppHome> {
       _steps = event.steps.toString();
     });
 
-    StepsData stepsData = StepsData(dateTime: DateTime.now(), steps: num.parse(_steps));
-    print(sendSteps(stepsData));
+    stepsData = StepsData(dateTime: DateTime.now(), steps: num.parse(_steps));
+    //print(sendSteps(stepsData));
   }
 
   /// WEATHER
   getWeather() {
     print("@@@@@ trying to get weather");
     fetchWeather().then((value) => weatherData = WeatherData.fromJson(jsonDecode(value.body)));
-    print(sendWeather(weatherData!));
+    // print(sendWeather(weatherData!));
   }
 
-    /// HISTORICAL WEATHER
+  /// HISTORICAL WEATHER
   getHistoricalWeather() {
     print("@@@@@ trying to get historical weather");
-    fetchHistoricalWeather().then((value) => historicalWeatherData = WeatherData.fromJson(jsonDecode(value.body)));
+    fetchHistoricalWeather()
+        .then((value) => historicalWeatherData = WeatherData.fromJson(jsonDecode(value.body)));
     print(sendWeather(historicalWeatherData!));
   }
 
@@ -164,15 +283,15 @@ class _AppHomeState extends State<AppHome> {
         weatherAPIkey));
   }
 
-    Future<http.Response> fetchHistoricalWeather() {
-      final DateTime date_now = DateTime.now().subtract(Duration(days:1));
-      final timestamp = date_now.millisecondsSinceEpoch ~/ 1000;
+  Future<http.Response> fetchHistoricalWeather() {
+    final DateTime date_now = DateTime.now().subtract(Duration(days: 1));
+    final timestamp = date_now.millisecondsSinceEpoch ~/ 1000;
     return http.get(Uri.parse('https://api.openweathermap.org/data/2.5/onecall/timemachine?lat=' +
         _locationData!.latitude.toString() +
         '&lon=' +
         _locationData!.longitude.toString() +
         '&dt=' +
-        timestamp
+        timestamp.toString() +
         '&appid=' +
         weatherAPIkey));
   }
@@ -187,6 +306,7 @@ class _AppHomeState extends State<AppHome> {
   }
 
   Future<http.Response> sendLocation(LocationData locationData) async {
+    print("sending location");
     var response = await http.post(Uri.parse(url + 'location'),
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',
@@ -205,6 +325,7 @@ class _AppHomeState extends State<AppHome> {
   }
 
   Future<http.Response> sendActivity(ActivityData activityData) async {
+    print("sending activity");
     var response = await http.post(Uri.parse(url + 'activity'),
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',
@@ -217,12 +338,10 @@ class _AppHomeState extends State<AppHome> {
     print('ACTIVITY - $activityEvent');
     setState(() {
       _events.add(activityEvent);
+      _eventTypes.add(activityEvent.type.toString().split('.').last);
     });
-    ActivityData activityData = ActivityData(
-        dateTime: DateTime.now(),
-        certainty: _events.last.confidence,
-        activity: _events.last.type.toString().split('.').last);
-    print(sendActivity(activityData));
+
+    //print(sendActivity(activityData));
   }
 
   @override
@@ -238,11 +357,5 @@ class _AppHomeState extends State<AppHome> {
         //     "Current activity :  ${_events.last.type.toString().split('.').last} ${_events.last.confidence}"),
       ])),
     );
-  }
-
-  @override
-  void dispose() {
-    activityStreamSubscription?.cancel();
-    super.dispose();
   }
 }

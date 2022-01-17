@@ -40,7 +40,7 @@ class Hourly {
   // int? pressure;
   // int? humidity;
   // double? dewPoint;
-  double? uvi;
+  num? uvi;
   int? clouds;
   // int? visibility;
   // double? windSpeed;

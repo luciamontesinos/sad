@@ -5,26 +5,48 @@ import pygame
 import google.cloud.texttospeech as tts
 import google.cloud.texttospeech as tts
 from datetime import datetime
-
+from pandas import DataFrame
+import switch
 
 def main():
 
     # Instanciate database
-    hostname = 'localhost'
-    username = 'username'
-    password = 'password'
-    database = 'dbname'
+    hostname = '127.0.0.1'
+    username = 'pi'
+    password = 'pi'
+    database = 'saddb'
 
     connection = psycopg2.connect(
         host=hostname, user=username, password=password, database=database)
     cursor = connection.cursor()
 
+
+    #cursor.execute('SELECT version()')
+    #db_version = cursor.fetchone()
+    #print(db_version)
+    
     # Get tables
-    location_table = cursor.execute("")
-    weather_table = cursor.execute("")
-    activities_table = cursor.execute("")
-    steps_table = cursor.execute("")
-    social_table = cursor.execute("")
+    location_query = cursor.execute("select * from location")
+    location_table = cursor.fetchall()
+    for row in location_table:
+        print(row)
+        
+    activities_query = cursor.execute("select * from activities")
+    activities_table = cursor.fetchall()
+    for row in activities_table:
+        print(row)
+    steps_query = cursor.execute("select * from steps")
+    steps_table = cursor.fetchall()
+    for row in steps_table:
+        print(row)
+    for row in steps_table:
+        print(row[1])
+    
+    weather_query = cursor.execute("select * from weather")
+    weather_table = cursor.fetchall()
+    for row in weather_table:
+        print(row)    
+    #social_table = cursor.execute("select * from social")
 
     # Music library
     music_library = {
@@ -89,7 +111,7 @@ def playAudio(song_path):
 
 def turnOnLamp(minutes):
     # Call the lamp swith with a timer of X minutes
-
+    switch.main(minutes)
     # ALGORITHM
     # 1. Obtain the data from todays date
     today = datetime.now()
