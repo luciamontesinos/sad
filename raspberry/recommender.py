@@ -8,6 +8,7 @@ from datetime import datetime
 from pandas import DataFrame
 import switch
 
+
 def main():
 
     # Instanciate database
@@ -20,45 +21,54 @@ def main():
         host=hostname, user=username, password=password, database=database)
     cursor = connection.cursor()
 
-
     #cursor.execute('SELECT version()')
     #db_version = cursor.fetchone()
-    #print(db_version)
-    
+    # print(db_version)
+
     # Get tables
     location_query = cursor.execute("select * from location")
     location_table = cursor.fetchall()
     for row in location_table:
         print(row)
-        
+
     activities_query = cursor.execute("select * from activities")
     activities_table = cursor.fetchall()
     for row in activities_table:
         print(row)
-    steps_query = cursor.execute("select * from steps where time BETWEEN NOW() - INTERVAL '24 HOURS' AND NOW()")
+    steps_query = cursor.execute(
+        "select * from steps where time BETWEEN NOW() - INTERVAL '24 HOURS' AND NOW()")
     steps_table = cursor.fetchall()
     for row in steps_table:
         print(row)
     for row in steps_table:
         print(row[1])
-    
+
     weather_query = cursor.execute("select * from weather")
     weather_table = cursor.fetchall()
     for row in weather_table:
-        print(row)    
+        print(row)
     #social_table = cursor.execute("select * from social")
 
     # Music library
     music_library = {
-        # Define the songs on the library with similar naming to this:
-        "artist_song": "songs/artist_song",
+        "Bruno Mars_The Lazy Song": "./songs/Bruno Mars_The Lazy Song.mp3",
+        "CeeLo Green_FUCK YOU": "./songs/CeeLo Green_FUCK YOU.mp3",
+        "Clean Bandit_Rockabye": "./songs/Clean Bandit_Rockabye.mp3",
+        "Dua Lipa_IDGAF": "./songs/Dua Lipa_IDGAF.mp3",
+        "Galantis_No Money": "./songs/Galantis_No Money.mp3",
+        "Jason Derulo_Trumpets": "./songs/Jason Derulo_Trumpets.mp3",
+        "Jess Glynne_I'll Be There": "./songs/Jess Glynne_I'll Be There.mp3",
+        "Panic! At The Disco_High Hopes": "./songs/Panic! At The Disco_High Hopes.mp3",
+        "Tina Turner_The Best": "./songs/Tina Turner_The Best.mp3",
     }
 
     # Obtain recommendations
-    light_recommendation, vitamin_recommendation, minutes_lamp = obtainLightRecommendation()
+    light_recommendation, vitamin_recommendation, minutes_lamp = obtainLightRecommendation(
+        weather_table=weather_table)
     activity_recommendation = obtainActivityRecommendation()
     music_recommendation, song_path = obtainMusicRecommendation(
         music_library=music_library)
+    location_recommendation = obtainLocationRecommendation(location_table)
 
     # Obtain text to speech
     filename = textToSpeech(music_recommendation=music_recommendation, activity_recommendation=activity_recommendation,
@@ -72,7 +82,7 @@ def main():
         turnOnLamp(minutes_lamp)
 
     # Play the recommended song
-    playAudio('songs/' + song_path)
+    playAudio('./songs/' + song_path)
 
 
 def textToSpeech(music_recommendation, activity_recommendation, social_recommendation, vitamin_recommendation, light_recommendation):
@@ -111,24 +121,32 @@ def playAudio(song_path):
 
 def turnOnLamp(minutes):
     # Call the lamp swith with a timer of X minutes
-    switch.main(minutes)
-    # ALGORITHM
-    # 1. Obtain the data from todays date
-    today = datetime.now()
+    switch.swichon(minutes)
+
+
+# ALGORITHM
+# 1. Obtain the data from todays date
+today = datetime.now()
 
 # 2. Check for every data point
 
 
 def checkLocation(today, location_table):
-    pass
+    pastLocations = []
+    for row in location_table:
+        if row[4] not in pastLocations:
+            pastLocations.append(row[4])
+    if len(pastLocations > 3):
+        return True
+    return False
 
 
 def checkActivity(today, activities_table):
-    ACTIVITY_DURATION   = 5
-    walking_duration    = 0
-    running_duration    = 0
-    still_duration      = 0
-    biking_duration     = 0
+    ACTIVITY_DURATION = 5
+    walking_duration = 0
+    running_duration = 0
+    still_duration = 0
+    biking_duration = 0
 
     for row in activities_table:
         if 'WALKING' == row[1]:
@@ -139,10 +157,11 @@ def checkActivity(today, activities_table):
             still_duration += ACTIVITY_DURATION
         elif 'ON_BICYCLE' == row[1]:
             biking_duration += ACTIVITY_DURATION
- 
+
     outdoor_activity_duration = walking_duration + running_duration + biking_duration
 
     return outdoor_activity_duration
+
 
 """ different activity types:
 IN_VEHICLE
@@ -156,12 +175,29 @@ WALKING
 INVALID (used for parsing errors) """
 
 
-def checkSteps(today, steps_table):
-    current_steps = steps_table(today)
-    pass
+def checkSteps(steps_table):
+    current_steps = steps_table[-1][1]
+    return current_steps
 
 
-def obtainActivityRecommendation():
+def obtainLocationRecommendation(location_table):
+    # Recommendation for activity
+    location_recommendation = ""
+    places_visited = location_table
+    if places_visited > 5:
+        pass
+    else:
+        location_recommendation.append(
+            "It seems like you have been in the same place today")
+        if not to late and weather not to Bad:
+            location_recommendation.appened(
+                "It could be a good idea to go on a short walk and get some fresh air")
+        if to late or weather to bad:
+            location_recommendation(
+                "It could be a good idea to change the environment")
+
+
+def obtainActivityRecommendation(current_steps):
     # Recommendation for activity
     activity_recommendation = ""
     if current_steps < 10000 and (not hasActivityRunning and not hasActivityCycling):
@@ -207,7 +243,8 @@ def obtainMusicRecommendation(music_library):
 
     return music_recommendation, path
 
-def obtainLightRecommendation():
+
+def obtainLightRecommendation(weather_table):
     vitamin_intake = ""
     enough_light = False
     light_recommendation = ""
@@ -217,31 +254,30 @@ def obtainLightRecommendation():
 
     # light_exposure is calculated by cloudiness during the last day
     # calculate cloudiness average
-    cloud_sum   = 0 
+    cloud_sum = 0
     cloud_count = 0
-    cloud_avg   = 0
+    cloud_avg = 0
     for row in weather_table:
         cloud_sum += row[2]
         cloud_count += 1
     cloud_avg = cloud_sum / cloud_count
 
     # calculate uvi average
-    uvi_sum     = 0 
-    uvi_count   = 0
-    uvi_avg     = 0
+    uvi_sum = 0
+    uvi_count = 0
+    uvi_avg = 0
     for row in weather_table:
         uvi_sum += row[1]
         uvi_count += 1
     uvi_avg = uvi_sum / uvi_count
 
-    # calculate outdoor_activity 
+    # calculate outdoor_activity
     outdoor_activity_duration = checkActivity()
 
     # combine outdoor_activity with cloudiness average to get light_exposure
     UVI_SCALING = 2
     light_exposure = (100 - cloud_avg) * uvi_avg * UVI_SCALING
     # sufficient_exp = (100 - 50) * 2 * UVI_SCALING
-    
 
     if SUFFICIENT_LIGHT <= light_exposure and SUFFICIENT_OUTDOOR_ACTIVITY <= outdoor_activity_duration:
         enough_light = TRUE
