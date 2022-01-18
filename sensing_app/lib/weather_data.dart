@@ -35,19 +35,19 @@ class WeatherData {
 
 class Hourly {
   int? dt;
-  double? temp;
-  double? feelsLike;
+  num? temp;
+  num? feelsLike;
   // int? pressure;
   // int? humidity;
   // double? dewPoint;
   num? uvi;
-  int? clouds;
+  num? clouds;
   // int? visibility;
   // double? windSpeed;
   // int? windDeg;
   // double? windGust;
   List<Weather>? weather;
-  int? pop;
+  num? pop;
 
   Hourly(
       {this.dt,

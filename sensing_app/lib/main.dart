@@ -174,13 +174,16 @@ class _AppHomeState extends State<AppHome> {
     detectedActivities.clear();
   }
 
-  void sendWeatherData() {
-    sleep(Duration(seconds: 5));
-    print("sending weather");
+  void sendWeatherData() async {
+    setState(() {});
+    sleep(Duration(seconds: 15));
+    print("Sending weather");
+
+    _locationData = await location.getLocation();
     //fetchWeather();
-    getWeather();
-    sleep(Duration(seconds: 5));
-    sendWeather(weatherData!);
+    getWeather(_locationData!);
+    //sleep(Duration(seconds: 5));
+    getHistoricalWeather(_locationData!);
     //sendWeather(yesterdayWeatherData!);
   }
 
@@ -230,14 +233,14 @@ class _AppHomeState extends State<AppHome> {
     // weatherData = await fetchWeather();
     // fetchWeather().then((value) => print(value.body.toString()));
     // fetchHistoricalWeather().then((value) => print(value.body.toString()));
-    setState(() {});
+
     LocationData locationData = LocationData(
         dateTime: DateTime.now(),
         latitude: _locationData!.latitude!,
         longitude: _locationData!.longitude!,
         name: placemarks!.last.name!,
         address: placemarks!.last.street!);
-
+    setState(() {});
     detectedLocations.add(locationData);
     print(detectedLocations);
 
@@ -260,21 +263,26 @@ class _AppHomeState extends State<AppHome> {
   }
 
   /// WEATHER
-  getWeather() {
-    print("@@@@@ trying to get weather");
-    fetchWeather().then((value) => weatherData = WeatherData.fromJson(jsonDecode(value.body)));
+  getWeather(loc.LocationData _locationData) {
+    print("Get forecast");
+    fetchWeather(_locationData).then((value) {
+      weatherData = WeatherData.fromJson(jsonDecode(value.body));
+      print(sendForecast(weatherData!));
+    });
+
     // print(sendWeather(weatherData!));
   }
 
   /// HISTORICAL WEATHER
-  getHistoricalWeather() {
-    print("@@@@@ trying to get historical weather");
-    fetchHistoricalWeather()
-        .then((value) => historicalWeatherData = WeatherData.fromJson(jsonDecode(value.body)));
-    print(sendWeather(historicalWeatherData!));
+  getHistoricalWeather(loc.LocationData _locationData) {
+    print("Get historical weather");
+    fetchHistoricalWeather(_locationData).then((value) {
+      historicalWeatherData = WeatherData.fromJson(jsonDecode(value.body));
+      print(sendWeather(historicalWeatherData!));
+    });
   }
 
-  Future<http.Response> fetchWeather() {
+  Future<http.Response> fetchWeather(loc.LocationData _locationData) {
     return http.get(Uri.parse('https://api.openweathermap.org/data/2.5/onecall?lat=' +
         _locationData!.latitude.toString() +
         '&lon=' +
@@ -283,7 +291,7 @@ class _AppHomeState extends State<AppHome> {
         weatherAPIkey));
   }
 
-  Future<http.Response> fetchHistoricalWeather() {
+  Future<http.Response> fetchHistoricalWeather(loc.LocationData _locationData) {
     final DateTime date_now = DateTime.now().subtract(Duration(days: 1));
     final timestamp = date_now.millisecondsSinceEpoch ~/ 1000;
     return http.get(Uri.parse('https://api.openweathermap.org/data/2.5/onecall/timemachine?lat=' +
@@ -298,6 +306,15 @@ class _AppHomeState extends State<AppHome> {
 
   Future<http.Response> sendWeather(WeatherData weatherData) async {
     var response = await http.post(Uri.parse(url + 'weather'),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: jsonEncode(weatherData.toJson()));
+    return response;
+  }
+
+  Future<http.Response> sendForecast(WeatherData weatherData) async {
+    var response = await http.post(Uri.parse(url + 'forecast'),
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',
         },
