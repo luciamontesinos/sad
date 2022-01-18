@@ -35,7 +35,7 @@ def main():
     activities_table = cursor.fetchall()
     for row in activities_table:
         print(row)
-    steps_query = cursor.execute("select * from steps")
+    steps_query = cursor.execute("select * from steps where time BETWEEN NOW() - INTERVAL '24 HOURS' AND NOW()")
     steps_table = cursor.fetchall()
     for row in steps_table:
         print(row)
